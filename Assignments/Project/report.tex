@@ -1,0 +1,382 @@
+\documentclass[10pt,a4paper, twocolumn]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage[top=2cm, bottom=2cm, left=2cm, right=2cm]{geometry}
+\usepackage{enumitem}					% For the margin in "itemize"
+\usepackage{indentfirst}				% To indent first paragraph
+\usepackage{tabularx}					% To have tables of full width
+\usepackage[lofdepth,lotdepth]{subfig}	% For subfigures
+\usepackage{amsmath,amssymb,amsthm,amsfonts}
+\usepackage{sectsty}					% To configure sections fonts
+\usepackage{multirow}					% For multirows in tables
+\usepackage{makecell}					% To center in multirows
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{cancel}
+
+% Title declaration
+\title{\LARGE \bf
+EL2520 - Control Theory and Practice - Advanced \\
+Project Lab : The Four Tank Process
+}
+\author{
+Kartik Seshadri Chari \\
+kartikc@kth.se \\
+960807-0174 
+\and
+Devendra Sharma\\
+devendra@kth.se\\
+950815-5497
+\and
+Merav Modi\\
+merav@kth.se\\
+940120-}
+\date{22 May,2019}
+
+% Abstract configuration
+\renewenvironment{abstract}{\bf \textit{Abstract} ---}
+
+\begin{document}
+
+% Configuration
+\renewcommand{\thesection}{\Roman{section}.}		% change numerotation style
+\renewcommand{\thesubsection}{\Alph{subsection}.}	% ...
+\sectionfont{\normalfont}				% change section formating
+\subsectionfont{\normalfont\itshape}	% change subsection formating
+\setlist[itemize]{noitemsep, itemsep=2pt}
+\setcounter{secnumdepth}{2}  % remove numerotation for subsubsection and above
+
+% TITLE and ABSTRACT
+\maketitle
+
+\begin{abstract}
+This document is a report for the Project Lab conducted under the EL2520 course. This project was divided into 2 distinct sessions. The first one involved deriving a physical model of a four-tank process for minimum phase and non-minimum phase configurations via experimentation and investigating the coupling between the tanks. Emphasis was also given to manually controlling the process to understand the performance limitations due to the non-minimum dynamics. The second instance was dedicated to testing the model-based decentralized PI controller and the robust Glover-McFarlane method.
+\end{abstract}
+% Section: MODELLING
+\section{Modelling}
+Here, the nonlinear differential equations describing the plant will be derived. Thus, the rate of change of volume in each tank is given as:
+\begin{equation*}
+A\dfrac{dh}{dt} = q\textsubscript{in} - q\textsubscript{out}
+\end{equation*}
+From Bernoulli's law, we have
+\begin{equation*}
+q\textsubscript{out} = a\sqrt{2gh} \ \ \  \forall g = 981 cm/s^2
+\end{equation*}
+Now, as there is a pump used, its flowrate is goverened as follows:
+\begin{equation*}
+q_L = \gamma ku, \ q_U = (1-\gamma) ku \ \ \forall \gamma \in [0,1]
+\end{equation*}
+$\forall \ q_L$ denotes the lower tank and $q_U$ denotes the upper tank
+From the above equations, we can derive the non-linear system as follows:
+\begin{align*}
+A_1\dfrac{dh_1}{dt} &= -q_{out,1} + q_{out,3} + q_{L,1} \\
+A_2\dfrac{dh_2}{dt} &= -q_{out,2} + q_{out,4} + q_{L,2} \\
+A_3\dfrac{dh_3}{dt} &= -q_{out,3} + q_{U,2} \\
+A_4\dfrac{dh_4}{dt} &= -q_{out,4} + q_{U,1}
+\end{align*}
+Thus, the final system of equations turns out to be:
+\begin{equation}
+\begin{aligned}
+\dfrac{dh_1}{dt} &= \dfrac{-a_1}{A_1}\sqrt{2gh_1} + \dfrac{a_3}{A_1} \sqrt{2gh_3} + \dfrac{\gamma _1 k_1}{A_1}u_1\\
+\dfrac{dh_2}{dt} &= \dfrac{-a_2}{A_2}\sqrt{2gh_2} + \dfrac{a_4}{A_2} \sqrt{2gh_4} + \dfrac{\gamma _2 k_2}{A_2}u_2\\
+\dfrac{dh_3}{dt} &= \dfrac{-a_3}{A_3}\sqrt{2gh_3} + \dfrac{(1- \gamma _2) k_2}{A_3}u_2\\
+\dfrac{dh_4}{dt} &= \dfrac{-a_4}{A_4}\sqrt{2gh_4} + \dfrac{(1- \gamma _1) k_1}{A_4}u_1
+\end{aligned}
+\label{eqn:nonlinear}
+\end{equation}
+\subsection{Equilibrium Equations}
+For the equilibrium condition, we take the rate of change of height as 0 to get the following set of equations:
+\begin{align*}
+\dfrac{-a_1}{A_1}\sqrt{2gh_1^0} + \dfrac{a_3}{A_1} \sqrt{2gh_3^0} + \dfrac{\gamma _1 k_1}{A_1}u_1^0 &= 0\\
+\dfrac{-a_2}{A_2}\sqrt{2gh_2^0} + \dfrac{a_4}{A_2} \sqrt{2gh_4^0} + \dfrac{\gamma _2 k_2}{A_2}u_2^0 &= 0\\
+\dfrac{-a_3}{A_3}\sqrt{2gh_3^0} + \dfrac{(1- \gamma _2) k_2}{A_3}u_2^0 &= 0\\
+\dfrac{-a_4}{A_4}\sqrt{2gh_4^0} + \dfrac{(1- \gamma _1) k_1}{A_4}u_1^0 &= 0 \\
+y_i^0 = k_c h_i^0 \ \ \forall i = \{1,2,3,4\}
+\end{align*}
+where $h_i^0, \ u_i^0, \ y_i^0$ denote the steady state values.
+\subsection{Linearization}
+Let $\Delta u_i = u_i - u_i^0$, $\Delta h_i = h_i - h_i^0$ and $\Delta y_i = y_i - y_i^0$ denote the deviations from the equilibrium and also let \\ 
+\[
+u = 
+\begin{bmatrix}
+  \Delta u_1 \\
+  \Delta u_2
+\end{bmatrix}
+,
+x = 
+\begin{bmatrix}
+  \Delta h_1 \\
+  \Delta h_2 \\
+  \Delta h_3 \\
+  \Delta h_4
+\end{bmatrix}
+,
+y = 
+\begin{bmatrix}
+  \Delta y_1 \\
+  \Delta y_2
+\end{bmatrix}
+\]
+For Linearizing the above-derived system of non-linear equation \ref{eqn:nonlinear} around its equilibrium points, we use the Taylor Series of Expansion (neglecting HOTs) to obtain the following matrices:
+\[
+A =
+\begin{bmatrix}
+  \dfrac{\partial \Delta h_1}{\partial h_1} &
+  \dfrac{\partial \Delta h_1}{\partial h_2} &
+  \dfrac{\partial \Delta h_1}{\partial h_3} &
+  \dfrac{\partial \Delta h_1}{\partial h_4} \\
+
+  \dfrac{\partial \Delta h_2}{\partial h_1} &
+  \dfrac{\partial \Delta h_2}{\partial h_2} &
+  \dfrac{\partial \Delta h_2}{\partial h_3} &
+  \dfrac{\partial \Delta h_2}{\partial h_4} \\
+
+  \dfrac{\partial \Delta h_3}{\partial h_1} &
+  \dfrac{\partial \Delta h_3}{\partial h_2} &
+  \dfrac{\partial \Delta h_3}{\partial h_3} &
+  \dfrac{\partial \Delta h_3}{\partial h_4} \\
+
+  \dfrac{\partial \Delta h_4}{\partial h_1} &
+  \dfrac{\partial \Delta h_4}{\partial h_2} &
+  \dfrac{\partial \Delta h_4}{\partial h_3} &
+  \dfrac{\partial \Delta h_4}{\partial h_4} \\
+\end{bmatrix} \bigg |_{h_i^0, u_i^0}
+\]
+
+\[
+B =
+\begin{bmatrix}
+  \dfrac{\partial \Delta h_1}{\partial u_1} &
+  \dfrac{\partial \Delta h_1}{\partial u_2} \\
+
+  \dfrac{\partial \Delta h_2}{\partial u_1} &
+  \dfrac{\partial \Delta h_2}{\partial u_2} \\
+
+  \dfrac{\partial \Delta h_3}{\partial u_1} &
+  \dfrac{\partial \Delta h_3}{\partial u_2} \\
+
+  \dfrac{\partial \Delta h_4}{\partial u_1} &
+  \dfrac{\partial \Delta h_4}{\partial u_2} \\
+\end{bmatrix} \bigg |_{h_i^0, u_i^0}
+\]
+
+\[
+C =
+\begin{bmatrix}
+  \dfrac{\partial \Delta y_1}{\partial h_1} &
+  \dfrac{\partial \Delta y_1}{\partial h_2} &
+  \dfrac{\partial \Delta y_1}{\partial h_3} &
+  \dfrac{\partial \Delta y_1}{\partial h_4} \\
+
+  \dfrac{\partial \Delta y_2}{\partial h_1} &
+  \dfrac{\partial \Delta y_2}{\partial h_2} &
+  \dfrac{\partial \Delta y_2}{\partial h_3} &
+  \dfrac{\partial \Delta y_2}{\partial h_4} \\
+\end{bmatrix} \bigg |_{h_i^0, u_i^0}
+\]
+
+\[
+D =
+\begin{bmatrix}
+  \dfrac{\partial \Delta y_1}{\partial u_1} &
+  \dfrac{\partial \Delta y_1}{\partial u_2} \\
+
+  \dfrac{\partial \Delta y_2}{\partial u_1} &
+  \dfrac{\partial \Delta y_2}{\partial u_2} \\
+\end{bmatrix} \bigg |_{h_i^0, u_i^0}
+\]
+After solving the above matrices, we get
+\[
+\dot{x} = Ax + Bu, \ \ \ \ \ 
+\\
+y = Cx + Du
+\]
+where,
+\[
+A =
+\begin{bmatrix}
+  -\dfrac{1}{T_1} & 0 & \dfrac{A_3}{A_1 T_3} & 0  \\
+  0 & -\dfrac{1}{T_2} & 0 & \dfrac{A_4}{A_2 T_4}  \\
+  0 & 0 & -\dfrac{1}{T_3} & 0 \\
+  0 & 0 & 0 & -\dfrac{1}{T_4}
+\end{bmatrix}
+\]
+\[
+B =
+\begin{bmatrix}
+  \dfrac{\gamma_1 k_1}{A_1} & 0 \\
+  0 & \dfrac{\gamma_2 k_2}{A_2} \\
+  0 & \dfrac{(1-\gamma_2) k_2}{A_3} \\
+  \dfrac{(1-\gamma_1) k_1}{A_4} & 0
+\end{bmatrix}
+\]
+\[
+C =
+\begin{bmatrix}
+k_c & 0 & 0 & 0 \\
+0 & k_c & 0 & 0 \\
+\end{bmatrix}
+\]
+
+and D = 0, with $T_i = \dfrac{A_i}{a_i}\sqrt{\dfrac{2h_i^0}{g}}$.
+
+\subsection{Transfer Matrix}
+In order to obtain the Transfer Matrix, we use the following formula - 
+\begin{align*}
+  G(s) &= C (sI - A)^{-1} B \\
+\end{align*}
+i.e.
+G(s) = 
+\[
+\setlength{\arraycolsep}{1pt}
+\begin{bmatrix}
+  k_c & 0 & 0 & 0 \\
+  0 & k_c & 0 & 0 
+\end{bmatrix}
+\setlength{\arraycolsep}{0.2pt}
+\begin{bmatrix}
+  \dfrac{T_1}{1 + s T_1} & 0 & \dfrac{\dfrac{A_3 T_1}{A_1}}{(1 + s T_1)(1 + s T_3)} & 0 \\
+  0 & \dfrac{T_2}{1 + s T_2} & 0 & \dfrac{\dfrac{A_4 T_2}{A_2}}{(1+s T_2)(1 + s T_4)} \\
+  0 & 0 & \dfrac{T_3}{1 + s T_3} & 0 \\
+  0 & 0 & 0 & \dfrac{T_4}{1 + s T_4}
+\end{bmatrix}
+\]
+\[
+*\begin{bmatrix}
+  \dfrac{\gamma_1 k_1}{A_1} & 0 \\
+  0 & \dfrac{\gamma_2 k_2}{A_2} \\
+  0 & \dfrac{(1-\gamma_2) k_2}{A_3} \\
+  \dfrac{(1-\gamma_1) k_1}{A_4} & 0
+\end{bmatrix} =
+\]
+\[
+\begin{bmatrix}
+  \dfrac{\gamma_1 k_1 c_1}{1 + s T_1} & \dfrac{(1-\gamma_2)k_2 c_1}{(1 + s T_3)(1 + s T_1)} \\\\
+  \dfrac{(1-\gamma_1) k_1 c_2}{(1 + s T_4)(1 + s T_2)} & \dfrac{\gamma_2 k_2 c_2}{1 + s T_2}
+\end{bmatrix}
+\]
+\subsection{Zeros of Transfer Matrix}
+Zeros of the Transfer matrix G(s) are given by the numerator of the det(G(s)). In other words, zeros of the Transfer matrix can be obtained by solving the equation :
+\begin{align*}
+\gamma_1 \gamma_2 T_3 T_4 s^2 + \gamma_1 \gamma_2(T_3 + T_4) s + (\gamma_1 + \gamma_2 - 1) = 0 \\
+\implies T_3 T_4 s^2 + (T_3 + T_4) s + \dfrac{\gamma_1 + \gamma_2 - 1}{\gamma_1 \gamma_2} = 0
+\end{align*}
+The solution of the above quadratic equation is:
+\begin{align*}
+  s_1 &= -\dfrac{T_3 + T_4}{2 T_3 T_4} + \dfrac{1}{2 T_3 T_4} \sqrt{(T_3 + T_4)^2 - 4 \dfrac{\gamma_1 + \gamma_2 - 1}{\gamma_1 \gamma_2}} \\
+  s_2 &= -\dfrac{T_3 + T_4}{2 T_3 T_4} - \dfrac{1}{2 T_3 T_4} \sqrt{(T_3 + T_4)^2 - 4 \dfrac{\gamma_1 + \gamma_2 - 1}{\gamma_1 \gamma_2}} \\
+\end{align*}
+Here, as $s_2$ has both terms negative, the zero is on the Left Half of the s-plane. But when it comes to $s_1$, if the term $\dfrac{\gamma_1 + \gamma_2 - 1}{\gamma_1 \gamma_2}$ is positive, value of the square root term will be less than $T_3 + T_4$, which makes the zero negative. Thus, for the \textbf{Minimum Phase case}, $(\gamma_1 + \gamma_2 - 1) > 0$ i.e $\gamma_1 + \gamma_2 > 1$ Now as $\gamma_1,\gamma_2 \in [0,1]$, $\gamma_1 + \gamma_2 \leq 2$
+\begin{equation*}
+\therefore \ 1 < \gamma_1 + \gamma_2 \leq 2
+\end{equation*}
+For the \textbf{Non-minimum phase case}, one of the zeros is positive which means $(\gamma_1 + \gamma_2 - 1) < 0$. Also, as $\gamma_1,\gamma_2 \in [0,1]$, $\gamma_1 + \gamma_2 > 0$.
+\begin{equation*}
+\therefore \ 0 < \gamma_1 + \gamma_2 \leq 1
+\end{equation*}
+\subsection{RGA Analysis}
+RGA(G(0)) = $G(0) .* G(0)\textsuperscript{-1}^T$
+Thus,
+\[
+G(0) =
+\begin{bmatrix}
+  \gamma_1 k_1 c_1 & (1-\gamma_2)k_2 c_1 \\
+  (1-\gamma_1) k_1 c_2 & \gamma_2 k_2 c_2
+\end{bmatrix}
+\]
+
+\[
+G(0)\textsuperscript{-1}^T =
+(\dfrac{1}{\gamma_1 \gamma_2 k_1 k_2 c_1 c_2 - (1-\gamma_1) (1-\gamma_2) k_1 k_2 c_1 c_2})
+\]
+\[
+\begin{bmatrix}
+  \gamma_2 k_2 c_2 & -(1-\gamma_1) k_1 c_2 \\
+  -(1-\gamma_2)k_2 c_1 & \gamma_1 k_1 c_1
+\end{bmatrix}
+\]
+
+Hence, the RGA of $G(0)$ is given by
+
+\begin{align*}
+  RGA(G(0)) &= G(0) .* G(0)^{-T} \\
+   &= 
+  \begin{bmatrix}
+	\dfrac{\gamma_1 \gamma_2}{\gamma_1 + \gamma_2 - 1}    
+    & \dfrac{\gamma_1 + \gamma_2 - 1 - \gamma_1 \gamma_2}{\gamma_1 + \gamma_2 - 1} \\ \\
+    \dfrac{\gamma_1 + \gamma_2 - 1 - \gamma_1 \gamma_2}{\gamma_1 + \gamma_2 - 1} & \dfrac{\gamma_1 \gamma_2}{\gamma_1 + \gamma_2 - 1}
+  \end{bmatrix}
+\end{align*}
+Now, let $\lambda = \dfrac{\gamma_1 \gamma_2}{\gamma_1 + \gamma_2 - 1}$. Thus, we get
+\[
+RGA(G(0)) = 
+\begin{bmatrix}
+\lambda & 1-\lambda \\
+1-\lambda & \lambda
+\end{bmatrix}
+\]
+For \textbf{Minimum Phase case} : \\
+$\lambda_1 = 0.625 = \lambda_2$. Thus, 
+\[
+RGA(G_{mp}(0) =
+\begin{bmatrix}
+  1.5625 & -0.5625 \\
+  -0.5625 & 1.5625 \\
+\end{bmatrix}
+\] \\
+For \textbf{Non-Minimum Phase case} : \\
+$\lambda_1 = 0.375 = \lambda_2$. Thus, 
+\[
+RGA(G_{nmp}(0) =
+\begin{bmatrix}
+  -0.5625 & 1.5625 \\
+  1.5625 & -0.5625 \\
+\end{bmatrix}
+\] 
+
+\subsection{Determination of $k_1$ and $k_2$}
+For determining the values of $k_1$ and $k_2$, we need to measure how fast the pump fills up a tank. Thus, for $k_1$, tank 1 was observed and the following experiment was conducted.
+We stopped the outflow from tank 1 and ensured that only the pump input was allowed into the tank. This helped us obtain the value of $k_1$ using the following equation:
+\begin{equation*}
+\dfrac{dh_1}{dt} = \cancelto{0}{-\dfrac{a_1}{A_1}\sqrt{2gh_1}} + \cancelto{0}{\dfrac{a_3}{A_1}\sqrt{2gh_3}} + \dfrac{\gamma_1 k_1}{A_1}u_1 
+\end{equation*}
+We repeated the same process with the $tank_2$ for obtaining the value of $k_2$. \\
+After multiple readings using different voltages, we obtained 
+\begin{align*}
+k_1 &= 4.4247 cm^3 / sV \\
+k_2 &= 4.1092 cm^3 / sV
+\end{align*}
+\subsection{Determination of areas of holes}
+Before proceeding with the procedure, some assumptions used are as follows:
+\begin{itemize}
+\item The cross-sectional areas of the tanks are the same i.e A = 15.52 $cm^2$
+\item The areas $a_1$ and $a_2$ remain the same for both Minimum and non-minimum phase cases
+\item The areas $a_3$ and $a_3$ will vary for Minimum and non-minimum phase cases
+\end{itemize}
+So, for calculating the areas, we first considered tanks 3 and 4 as they just had a single input and single output making the calculation for $a_3$ and $a_4$ simple. We let the upper 2 tanks settle at their equilibrium points $h_3^0$ and $h_4^0$ by keeping $u_1^0 = 7.5V$ and $u_2^0 = 7.5V$. 
+\begin{align*}
+\therefore \ a_3 &= \dfrac{(1- \gamma _2) k_2}{\sqrt{2gh_3^0}}u_2^0\\ 
+and \ 
+\ a_4 &= \dfrac{(1- \gamma _1) k_1}{\sqrt{2gh_4^0}}u_1^0
+\end{align*}
+Now, the entire system was driven to equilibrium and all the steady-state heights($h_i^0$) were measured. As we had 2 equations(one each for tank 1 and tank 2) and 2 unknown, the areas of holes 1 and 2 were calculated by solving the 2*2 linear system as follows:
+\begin{align*}
+a_1 &= \dfrac{a_3}{\sqrt{2gh_1^0}} \sqrt{2gh_3^0} + \dfrac{\gamma _1 k_1}{\sqrt{2gh_1^0}}u_1^0 \\
+a_2 &= \dfrac{a_4}{\sqrt{2gh_2^0}} \sqrt{2gh_4^0} + \dfrac{\gamma _2 k_2}{\sqrt{2gh_2^0}}u_2^0 \\
+\end{align*}
+For \textbf{Minimum Phase Case}
+\begin{align*}
+a_1 &= 0.2250 \ cm^2\\
+a_2 &= 0.2389 \ cm^2\\
+a_3 &= 0.0633 \ cm^2\\
+a_4 &= 0.0888 \ cm^2
+\end{align*}
+For \textbf{Non-Minimum Phase Case}
+\begin{align*}
+a_1 &= 0.2250 \ cm^2\\
+a_2 &= 0.2389 \ cm^2\\
+a_3 &= 0.115 \ cm^2\\
+a_4 &= 0.213 \ cm^2
+\end{align*}
+\end{document}
