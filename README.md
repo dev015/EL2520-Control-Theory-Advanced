@@ -1,4 +1,4 @@
-# el2520_control_theory_adv
+# EL2520 Control Theory Advanced
 
 Assignment, Old Exam papers, Exercise
 # EL2520-Control-Theory-Advanced
